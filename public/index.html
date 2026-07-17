@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天天飞车授权管理</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }
+.container { max-width: 900px; margin: 0 auto; }
+h1 { text-align: center; margin-bottom: 20px; color: #38bdf8; }
+.card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.card h2 { font-size: 16px; color: #94a3b8; margin-bottom: 12px; }
+input, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 14px; }
+button { background: #0ea5e9; cursor: pointer; border: none; margin-left: 8px; }
+button:hover { background: #0284c7; }
+button.danger { background: #dc2626; }
+button.danger:hover { background: #b91c1c; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #334155; font-size: 13px; }
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.stat { text-align: center; }
+.stat .num { font-size: 28px; font-weight: bold; color: #38bdf8; }
+.stat .label { font-size: 12px; color: #64748b; }
+.status-active { color: #22c55e; }
+.status-banned { color: #ef4444; }
+.row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>天天飞车授权管理</h1>
+
+  <div class="card">
+    <div class="row">
+      <input id="adminKey" placeholder="管理密钥" style="flex:1">
+      <button onclick="loadStats()">刷新统计</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>统计概览</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="totalDevices">-</div><div class="label">总设备数</div></div>
+      <div class="stat"><div class="num" id="bannedUsers">-</div><div class="label">黑名单用户</div></div>
+      <div class="stat"><div class="num" id="recentCount">-</div><div class="label">最近记录</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>管理操作</h2>
+    <div class="row">
+      <input id="banQQ" placeholder="用户QQ" style="flex:1">
+      <input id="banReason" placeholder="原因" style="flex:1">
+      <button class="danger" onclick="banUser()">拉黑</button>
+    </div>
+    <div class="row">
+      <input id="unbanQQ" placeholder="用户QQ" style="flex:1">
+      <button onclick="unbanUser()">解封</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>设备记录</h2>
+    <table>
+      <thead><tr><th>设备码</th><th>QQ</th><th>名称</th><th>状态</th><th>时间</th></tr></thead>
+      <tbody id="deviceList"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const API = location.origin + '/api';
+
+async function loadStats() {
+  const key = document.getElementById('adminKey').value;
+  if (!key) return alert('请输入管理密钥');
+
+  const res = await fetch(API + '/admin', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({admin_key: key, action: 'stats'})
+  });
+  const data = await res.json();
+
+  if (!data.ok) return alert(data.message);
+
+  document.getElementById('totalDevices').textContent = data.total_devices || 0;
+  document.getElementById('bannedUsers').textContent = data.banned_users || 0;
+  document.getElementById('recentCount').textContent = (data.recent || []).length;
+
+  const tbody = document.getElementById('deviceList');
+  tbody.innerHTML = '';
+  for (const d of data.recent || []) {
+    const tr = document.createElement('tr');
+    for (const value of [d.device_id, d.qq, d.qq_name, d.status, d.timestamp]) {
+      const td = document.createElement('td');
+      td.textContent = value || '';
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+async function banUser() {
+  const key = document.getElementById('adminKey').value;
+  const qq = document.getElementById('banQQ').value;
+  const reason = document.getElementById('banReason').value || '管理员拉黑';
+  if (!qq) return alert('请输入QQ');
+
+  const res = await fetch(API + '/admin', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({admin_key: key, action: 'ban', qq, reason})
+  });
+  const data = await res.json();
+  alert(data.ok ? `已拉黑，关联 ${data.banned_devices} 个设备` : data.message);
+  if (data.ok) loadStats();
+}
+
+async function unbanUser() {
+  const key = document.getElementById('adminKey').value;
+  const qq = document.getElementById('unbanQQ').value;
+  if (!qq) return alert('请输入QQ');
+
+  const res = await fetch(API + '/admin', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({admin_key: key, action: 'unban', qq})
+  });
+  const data = await res.json();
+  alert(data.ok ? `已解封，恢复 ${data.unbanned_devices} 个设备` : data.message);
+  if (data.ok) loadStats();
+}
+</script>
+</body>
+</html>

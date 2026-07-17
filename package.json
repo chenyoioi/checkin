@@ -1,0 +1,13 @@
+{
+  "name": "ttfc-license-server",
+  "version": "1.0.0",
+  "description": "天天飞车授权验证服务器 - Vercel + Upstash Redis",
+  "main": "api/verify.js",
+  "scripts": {
+    "test": "node --test",
+    "build-config": "node scripts/build-config.js"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.28.0"
+  }
+}
